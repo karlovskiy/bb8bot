@@ -1,0 +1,84 @@
+# bb8bot configuration file
+
+# Bot settings
+[settings]
+    description = """My name is *bb8bot* and i can run ssh commands on remote hosts.
+_*Format:*_
+```
+<group> [host] <command> [args]
+```
+_*Examples:*_
+If command group has only one host, it could be omited.
+```
+unix memory
+```
+If command group has multiple hosts, it must be specified.
+```
+unix myhost lsof ssh
+```
+All commands have implicit `help` argument.
+```
+unix lsof help
+```
+"""
+    token = "YOUR SLACK TOKEN"
+    maxSymbols = 3000
+    timeout = "30s"
+
+# Commands
+[[group]]
+    id = "unix"
+    description = "Unix useful commands"
+    hosts = ["pg", "somehost"]
+
+    [[group.command]]
+        id="memory"
+        description = "Display amount of free and used memory in the system"
+        cmdFmt="free -th"
+
+    [[group.command]]
+        id="disk"
+        description = "Report file system disk space usage"
+        cmdFmt="df -h --total"
+
+    [[group.command]]
+        id = "name"
+        description = "Print system information"
+        cmdFmt = "uname -a"
+
+    [[group.command]]
+        id = "lsof"
+        description = "List open connections"
+        cmdFmt = "lsof -i %s -P"
+        arguments = ["protocol"]
+
+    [[group.argument]]
+        id = "protocol"
+        description = "Supported protocols"
+
+        [[group.argument.item]]
+            name = "ssh"
+            value = ":22"
+
+# Hosts
+[[host]]
+    id = "localhost"
+    address = "localhost"
+    port = 22
+
+    [host.auth]
+        type = "password"
+        username = "your_user"
+        password = "your_pass"
+
+
+[[host]]
+    id = "somehost"
+    address = "somehost"
+    port = 22
+
+    [host.auth]
+        type = "publickey"
+        username = "your_user"
+        privateKeyPath = "~/.ssh/your_private_key"
+        passphrase = "your_passphrase"
