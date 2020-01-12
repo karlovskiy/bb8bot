@@ -23,12 +23,12 @@ func Parse(configData string) (*Config, error) {
 	}
 	var help strings.Builder
 
-	timeout, err := time.ParseDuration("30s")
+	defaultTimeout, err := time.ParseDuration("30s")
 	if err != nil {
 		return nil, err
 	}
 	if internal.Settings.Timeout != "" {
-		timeout, err = time.ParseDuration(internal.Settings.Timeout)
+		defaultTimeout, err = time.ParseDuration(internal.Settings.Timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +38,6 @@ func Parse(configData string) (*Config, error) {
 	external.Settings = &Settings{
 		Token:      internal.Settings.Token,
 		MaxSymbols: internal.Settings.MaxSymbols,
-		Timeout:    timeout,
 	}
 
 	external.Hosts = make(map[string]*Host)
@@ -110,11 +109,20 @@ func Parse(configData string) (*Config, error) {
 			}
 			commandHelp.WriteString(fmt.Sprintf("```%s", argsHelp.String()))
 
+			timeout := defaultTimeout
+			if c.Timeout != "" {
+				timeout, err = time.ParseDuration(c.Timeout)
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			group.Commands[c.Id] = &Command{
 				Id:        c.Id,
 				Help:      commandHelp.String(),
 				Format:    c.Format,
 				Arguments: args,
+				Timeout:   timeout,
 			}
 		}
 		group.Help = groupHelp.String()
@@ -134,7 +142,6 @@ type Config struct {
 type Settings struct {
 	Token      string
 	MaxSymbols int
-	Timeout    time.Duration
 }
 
 type Group struct {
@@ -164,6 +171,7 @@ type Command struct {
 	Help      string
 	Format    string
 	Arguments []*Argument
+	Timeout   time.Duration
 }
 
 type Argument struct {
@@ -204,6 +212,7 @@ type command struct {
 	Description string   `toml:"description"`
 	Format      string   `toml:"cmdFmt"`
 	Arguments   []string `toml:"arguments"`
+	Timeout     string   `toml:"timeout"`
 }
 
 type host struct {

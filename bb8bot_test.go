@@ -5,7 +5,6 @@ import (
 	"github.com/karlovskiy/bb8bot/config"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestParseAction(t *testing.T) {
@@ -105,7 +104,7 @@ func TestParseAction(t *testing.T) {
 	conf := makeTestConfig()
 
 	for i, test := range tests {
-		cmd, host, err := parseAction(test.action, conf)
+		cmd, _, host, err := parseAction(test.action, conf)
 		if !reflect.DeepEqual(err, test.err) {
 			t.Errorf("%d: Got err: %v, want: %v", i, err, test.err)
 		}
@@ -179,16 +178,10 @@ func makeTestConfig() *config.Config {
 		Commands: commands,
 	}
 
-	timeout, err := time.ParseDuration("30s")
-	if err != nil {
-		panic(err)
-	}
-
 	conf := &config.Config{
 		Settings: &config.Settings{
 			Token:      "xoxb-36484",
 			MaxSymbols: 3000,
-			Timeout:    timeout,
 		},
 		Hosts:  hosts,
 		Groups: groups,

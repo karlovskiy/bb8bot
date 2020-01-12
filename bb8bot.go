@@ -20,6 +20,7 @@ var (
 func main() {
 
 	flag.Parse()
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	conf, err := config.ParseFile(*configPath)
 	if err != nil {
@@ -52,11 +53,11 @@ func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 			action := strings.TrimPrefix(text, prefix)
 			if action != text {
 				action = strings.TrimSpace(action)
-				cmd, host, err := parseAction(action, conf)
+				rawCmd, command, host, err := parseAction(action, conf)
 				if err != nil {
 					rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("%v", err), ev.Msg.Channel))
 				} else {
-					output, err := execute(conf, cmd, host)
+					output, err := execute(conf, rawCmd, command, host)
 					if err != nil {
 						rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("error execution action: %v", err), ev.Msg.Channel))
 					}
@@ -70,31 +71,33 @@ func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 }
 
 // parse action from chat message and convert it to ssh command for execution
-func parseAction(action string, conf *config.Config) (cmd *string, host *config.Host, err error) {
+func parseAction(action string, conf *config.Config) (rawCmd *string, command *config.Command, host *config.Host, err error) {
+	log.Printf("Parse action: %q", action)
+
 	if action == "" || action == "help" {
-		return nil, nil, errors.New(conf.Help)
+		return nil, nil, nil, errors.New(conf.Help)
 	}
 
 	actionParts := strings.Fields(action)
 	searchGroup := actionParts[0]
 	group, exist := conf.Groups[searchGroup]
 	if !exist {
-		return nil, nil, errors.New(fmt.Sprintf("group *%s* not found\n%s", searchGroup, conf.Help))
+		return nil, nil, nil, errors.New(fmt.Sprintf("group *%s* not found\n%s", searchGroup, conf.Help))
 	}
 	if len(actionParts) < 2 {
-		return nil, nil, errors.New(group.Help)
+		return nil, nil, nil, errors.New(group.Help)
 	}
 
 	searchHostOrCommand := actionParts[1]
 	if len(actionParts) == 3 && actionParts[2] == "help" {
 		helpCommand, exist := group.Commands[searchHostOrCommand]
 		if exist {
-			return nil, nil, errors.New(helpCommand.Help)
+			return nil, nil, nil, errors.New(helpCommand.Help)
 		}
 	}
 
 	if len(group.Hosts) == 0 {
-		return nil, nil, errors.New(fmt.Sprintf("hosts for group *%s* not found\n%s", group.Id, group.Help))
+		return nil, nil, nil, errors.New(fmt.Sprintf("hosts for group *%s* not found\n%s", group.Id, group.Help))
 	} else if len(group.Hosts) == 1 {
 		for _, h := range group.Hosts {
 			host = h
@@ -102,27 +105,27 @@ func parseAction(action string, conf *config.Config) (cmd *string, host *config.
 	} else {
 		host, exist = conf.Hosts[searchHostOrCommand]
 		if !exist {
-			return nil, nil, errors.New(fmt.Sprintf("host *%s* not found,\n%s", searchHostOrCommand, group.Help))
+			return nil, nil, nil, errors.New(fmt.Sprintf("host *%s* not found,\n%s", searchHostOrCommand, group.Help))
 		}
 	}
 	if host == nil {
-		return nil, nil, errors.New(fmt.Sprintf("host or command *%s* not found\n%s", searchHostOrCommand, conf.Help))
+		return nil, nil, nil, errors.New(fmt.Sprintf("host or command *%s* not found\n%s", searchHostOrCommand, conf.Help))
 	}
 	searchCommand := searchHostOrCommand
 	cmdIndex := 1
 	if host.Id == searchHostOrCommand {
 		if len(actionParts) < 3 {
-			return nil, nil, errors.New(fmt.Sprintf("command *%s* not found\n%s", searchHostOrCommand, group.Help))
+			return nil, nil, nil, errors.New(fmt.Sprintf("command *%s* not found\n%s", searchHostOrCommand, group.Help))
 		}
 		searchCommand = actionParts[2]
 		cmdIndex = 2
 	}
 	var rawCommand string
-	command, exist := group.Commands[searchCommand]
+	command, exist = group.Commands[searchCommand]
 	if exist {
 		helpIndex := cmdIndex + 1
 		if len(actionParts) > helpIndex && actionParts[helpIndex] == "help" {
-			return nil, nil, errors.New(command.Help)
+			return nil, nil, nil, errors.New(command.Help)
 		}
 		if len(command.Arguments) == 0 {
 			rawCommand = command.Format
@@ -131,7 +134,7 @@ func parseAction(action string, conf *config.Config) (cmd *string, host *config.
 			for i, arg := range command.Arguments {
 				argIndex := i + cmdIndex + 1
 				if len(actionParts) <= argIndex {
-					return nil, nil, errors.New(
+					return nil, nil, nil, errors.New(
 						fmt.Sprintf("*%d* argument not found\n%s", i+1, command.Help))
 				}
 				argValue := actionParts[argIndex]
@@ -144,7 +147,7 @@ func parseAction(action string, conf *config.Config) (cmd *string, host *config.
 					}
 				}
 				if !found {
-					return nil, nil, errors.New(
+					return nil, nil, nil, errors.New(
 						fmt.Sprintf("argument value *%s* not found\n%s", argValue, command.Help))
 				}
 			}
@@ -152,19 +155,21 @@ func parseAction(action string, conf *config.Config) (cmd *string, host *config.
 		}
 	}
 	if rawCommand == "" {
-		return nil, nil, errors.New(fmt.Sprintf("command *%s* not found\n%s", searchCommand, group.Help))
+		return nil, nil, nil, errors.New(fmt.Sprintf("command *%s* not found\n%s", searchCommand, group.Help))
 	}
 
-	return &rawCommand, host, nil
+	return &rawCommand, command, host, nil
 }
 
 // execute ssh command on specified host
-func execute(conf *config.Config, cmd *string, host *config.Host) (string, error) {
+func execute(conf *config.Config, rawCmd *string, command *config.Command, host *config.Host) (string, error) {
 	addr := fmt.Sprintf("%s:%d", host.Address, host.Port)
+	log.Printf("Execute cmd: %q on host: %q", *rawCmd, addr)
+
 	auth := host.Auth
 	sshConf := &ssh.ClientConfig{
 		User:            auth.Username,
-		Timeout:         conf.Settings.Timeout,
+		Timeout:         command.Timeout,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -192,13 +197,14 @@ func execute(conf *config.Config, cmd *string, host *config.Host) (string, error
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("error opening ssh connection: %v", err))
 	}
+	defer client.Close()
 	session, err := client.NewSession()
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("error creating ssh session: %v", err))
 	}
 	defer session.Close()
 
-	data, err := session.CombinedOutput(*cmd)
+	data, err := session.CombinedOutput(*rawCmd)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("error calling ssh command: %v", err))
 	}

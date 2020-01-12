@@ -26,6 +26,12 @@ var testConfig = `
         id="no-args-cmd"
         description = "No args cmd"
         cmdFmt="cmd-no-args"
+	
+    [[group.command]]
+        id="command-with-custom-timeout"
+        description = "Command with custom timeout"
+        cmdFmt="command-with-custom-timeout"
+        timeout = "2m"
 
     [[group.command]]
         id = "with-args-cmd"
@@ -84,7 +90,12 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	timeout, err := time.ParseDuration("30s")
+	defaultTimeout, err := time.ParseDuration("30s")
+	if err != nil {
+		panic(err)
+	}
+
+	customTimeout, err := time.ParseDuration("2m")
 	if err != nil {
 		panic(err)
 	}
@@ -134,12 +145,21 @@ func TestParse(t *testing.T) {
 		Help:      "_No args cmd_\n_*Format:*_\n```group1 [host] no-args-cmd```",
 		Format:    "cmd-no-args",
 		Arguments: []*Argument{},
+		Timeout:   defaultTimeout,
+	}
+	group1Commands["command-with-custom-timeout"] = &Command{
+		Id:        "command-with-custom-timeout",
+		Help:      "_Command with custom timeout_\n_*Format:*_\n```group1 [host] command-with-custom-timeout```",
+		Format:    "command-with-custom-timeout",
+		Arguments: []*Argument{},
+		Timeout:   customTimeout,
 	}
 	group1Commands["with-args-cmd"] = &Command{
 		Id:        "with-args-cmd",
 		Help:      "_With args cmd_\n_*Format:*_\n```group1 [host] with-args-cmd <argument>```\n`argument`   _Argument for command:_ `name`",
 		Format:    "cmd-with-args %s",
 		Arguments: arguments,
+		Timeout:   defaultTimeout,
 	}
 
 	group2Commands := make(map[string]*Command)
@@ -148,6 +168,7 @@ func TestParse(t *testing.T) {
 		Help:      "_Test command_\n_*Format:*_\n```group2 [host] test-cmd```",
 		Format:    "test",
 		Arguments: []*Argument{},
+		Timeout:   defaultTimeout,
 	}
 
 	group1Hosts := make(map[string]*Host)
@@ -160,7 +181,7 @@ func TestParse(t *testing.T) {
 	groups := make(map[string]*Group)
 	groups["group1"] = &Group{
 		Id:       "group1",
-		Help:     "test bot description\n_*Hosts:*_ `onehost` `anotherhost`\n_*Commands:*_\n`no-args-cmd`   _No args cmd_\n`with-args-cmd`   _With args cmd_",
+		Help:     "test bot description\n_*Hosts:*_ `onehost` `anotherhost`\n_*Commands:*_\n`no-args-cmd`   _No args cmd_\n`command-with-custom-timeout`   _Command with custom timeout_\n`with-args-cmd`   _With args cmd_",
 		Hosts:    group1Hosts,
 		Commands: group1Commands,
 	}
@@ -175,7 +196,6 @@ func TestParse(t *testing.T) {
 		Settings: &Settings{
 			Token:      "xoxb-36484",
 			MaxSymbols: 3000,
-			Timeout:    timeout,
 		},
 		Hosts:  hosts,
 		Groups: groups,

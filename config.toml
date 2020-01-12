@@ -29,7 +29,7 @@ unix lsof help
 [[group]]
     id = "unix"
     description = "Unix useful commands"
-    hosts = ["pg", "somehost"]
+    hosts = ["localhost", "somehost"]
 
     [[group.command]]
         id="memory"
@@ -40,6 +40,7 @@ unix lsof help
         id="disk"
         description = "Report file system disk space usage"
         cmdFmt="df -h --total"
+        timeout = "1m"
 
     [[group.command]]
         id = "name"
