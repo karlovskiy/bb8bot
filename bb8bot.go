@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"unicode/utf8"
 )
 
 var (
@@ -57,11 +58,14 @@ func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 				if err != nil {
 					rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("%v", err), ev.Msg.Channel))
 				} else {
-					output, err := execute(conf, rawCmd, command, host)
+					msgs, err := execute(conf, rawCmd, command, host)
 					if err != nil {
 						rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("error execution action: %v", err), ev.Msg.Channel))
 					}
-					rtm.SendMessage(rtm.NewOutgoingMessage(output, ev.Msg.Channel))
+					for _, msg := range msgs {
+						rtm.SendMessage(rtm.NewOutgoingMessage(msg, ev.Msg.Channel))
+					}
+
 				}
 			}
 		default:
@@ -162,7 +166,7 @@ func parseAction(action string, conf *config.Config) (rawCmd *string, command *c
 }
 
 // execute ssh command on specified host
-func execute(conf *config.Config, rawCmd *string, command *config.Command, host *config.Host) (string, error) {
+func execute(conf *config.Config, rawCmd *string, command *config.Command, host *config.Host) ([]string, error) {
 	addr := fmt.Sprintf("%s:%d", host.Address, host.Port)
 	log.Printf("Execute cmd: %q on host: %q", *rawCmd, addr)
 
@@ -180,42 +184,63 @@ func execute(conf *config.Config, rawCmd *string, command *config.Command, host 
 	} else if auth.Type == "" {
 		key, err := ioutil.ReadFile(auth.PrivateKeyPath)
 		if err != nil {
-			return "", errors.New(fmt.Sprintf("error loading private key %q: %v", auth.PrivateKeyPath, err))
+			return nil, errors.New(fmt.Sprintf("error loading private key %q: %v", auth.PrivateKeyPath, err))
 		}
 		signer, err := ssh.ParsePrivateKeyWithPassphrase(key, []byte(auth.Passphrase))
 		if err != nil {
-			return "", errors.New(fmt.Sprintf("error parsing private key %q: %v", auth.PrivateKeyPath, err))
+			return nil, errors.New(fmt.Sprintf("error parsing private key %q: %v", auth.PrivateKeyPath, err))
 		}
 		sshConf.Auth = []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		}
 	} else {
-		return "", errors.New(fmt.Sprintf("bad host %q auth type: %q", addr, auth.Type))
+		return nil, errors.New(fmt.Sprintf("bad host %q auth type: %q", addr, auth.Type))
 	}
 
 	client, err := ssh.Dial("tcp", addr, sshConf)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error opening ssh connection: %v", err))
+		return nil, errors.New(fmt.Sprintf("error opening ssh connection: %v", err))
 	}
 	defer client.Close()
 	session, err := client.NewSession()
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error creating ssh session: %v", err))
+		return nil, errors.New(fmt.Sprintf("error creating ssh session: %v", err))
 	}
 	defer session.Close()
 
 	data, err := session.CombinedOutput(*rawCmd)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error calling ssh command: %v", err))
-	}
-	output := string(data)
-	outputSymbols := []rune(output)
-	maxSymbols := conf.Settings.MaxSymbols
-
-	if len(outputSymbols) <= maxSymbols {
-		return fmt.Sprintf("```%s```", string(outputSymbols)), nil
+		return nil, errors.New(fmt.Sprintf("error calling ssh command: %v", err))
 	}
 
-	outputSymbols = outputSymbols[:maxSymbols]
-	return fmt.Sprintf("```%s\ntrimmed...```", string(outputSymbols)), nil
+	return createMessages(string(data), command.MaxSymbolsPerMessage, command.MaxMessages), nil
+}
+
+func createMessages(output string, maxSymbolsPerMessage int, maxMessages int) (msgs []string) {
+	var b strings.Builder
+	size := utf8.RuneCountInString(output)
+	symbolsPerMessage := 0
+	for i, r := range []rune(output) {
+		b.WriteRune(r)
+		symbolsPerMessage++
+		if (maxSymbolsPerMessage > 0 && symbolsPerMessage == maxSymbolsPerMessage) || i == size-1 {
+			msg := b.String()
+			b.Reset()
+			lastLFIndex := strings.LastIndex(msg, "\n")
+			if lastLFIndex == -1 || lastLFIndex == len(msg) {
+				msgs = append(msgs, msg)
+			} else {
+				beforeLF := msg[:lastLFIndex]
+				if beforeLF != "" {
+					msgs = append(msgs, beforeLF)
+				}
+				b.WriteString(msg[lastLFIndex+1:])
+			}
+			symbolsPerMessage = 0
+			if maxMessages > 0 && maxMessages == len(msgs) {
+				return
+			}
+		}
+	}
+	return
 }

@@ -7,6 +7,35 @@ import (
 	"testing"
 )
 
+func TestCreateMessage(t *testing.T) {
+
+	tests := []struct {
+		output               string
+		maxSymbolsPerMessage int
+		maxMessages          int
+		msgs                 []string
+	}{
+		{"", 0, 0, nil},
+		{"no limits", 0, 0, []string{"no limits"}},
+		{"no max message limits", 1, 0,
+			[]string{"n", "o", " ", "m", "a", "x", " ", "m", "e", "s", "s", "a", "g", "e", " ", "l", "i", "m", "i", "t", "s"}},
+		{"max 1 message with 1 symbol", 1, 1, []string{"m"}},
+		{"short", 10, 3, []string{"short"}},
+		{"not so short", 2, 2, []string{"no", "t "}},
+		{"0123456789\n0123456789", 12, 5, []string{"0123456789", "0123456789"}},
+		{"0123456789\n0123456789\n0123456789", 30, 5, []string{"0123456789\n0123456789", "0123456789"}},
+		{"0123456789\n", 10, 5, []string{"0123456789"}},
+		{"0123456789\n0123456789\n", 10, 5, []string{"0123456789", "0123456789"}},
+	}
+
+	for i, test := range tests {
+		msgs := createMessages(test.output, test.maxSymbolsPerMessage, test.maxMessages)
+		if !reflect.DeepEqual(msgs, test.msgs) {
+			t.Errorf("%d: Got msgs: %q, want: %q", i, msgs, test.msgs)
+		}
+	}
+}
+
 func TestParseAction(t *testing.T) {
 
 	tests := []struct {
@@ -180,8 +209,7 @@ func makeTestConfig() *config.Config {
 
 	conf := &config.Config{
 		Settings: &config.Settings{
-			Token:      "xoxb-36484",
-			MaxSymbols: 3000,
+			Token: "xoxb-36484",
 		},
 		Hosts:  hosts,
 		Groups: groups,

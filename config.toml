@@ -22,7 +22,8 @@ unix lsof help
 ```
 """
     token = "YOUR SLACK TOKEN"
-    maxSymbols = 3000
+    maxSymbolsPerMessage = 3000
+    maxMessages = 5
     timeout = "30s"
 
 # Commands
@@ -51,6 +52,8 @@ unix lsof help
         id = "lsof"
         description = "List open connections"
         cmdFmt = "lsof -i %s -P"
+        maxSymbolsPerMessage = 2000
+        maxMessages = 10
         arguments = ["protocol"]
 
     [[group.argument]]

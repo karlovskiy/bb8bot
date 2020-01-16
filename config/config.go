@@ -34,10 +34,12 @@ func Parse(configData string) (*Config, error) {
 		}
 	}
 
+	defaultMaxSymbolsPerMessage := internal.Settings.MaxSymbolsPerMessage
+	defaultMaxMessages := internal.Settings.MaxMessages
+
 	var external Config
 	external.Settings = &Settings{
-		Token:      internal.Settings.Token,
-		MaxSymbols: internal.Settings.MaxSymbols,
+		Token: internal.Settings.Token,
 	}
 
 	external.Hosts = make(map[string]*Host)
@@ -117,12 +119,23 @@ func Parse(configData string) (*Config, error) {
 				}
 			}
 
+			maxSymbolsPerMessage := defaultMaxSymbolsPerMessage
+			if c.MaxSymbolsPerMessage != 0 {
+				maxSymbolsPerMessage = c.MaxSymbolsPerMessage
+			}
+			maxMessages := defaultMaxMessages
+			if c.MaxMessages != 0 {
+				maxMessages = c.MaxMessages
+			}
+
 			group.Commands[c.Id] = &Command{
-				Id:        c.Id,
-				Help:      commandHelp.String(),
-				Format:    c.Format,
-				Arguments: args,
-				Timeout:   timeout,
+				Id:                   c.Id,
+				Help:                 commandHelp.String(),
+				Format:               c.Format,
+				Arguments:            args,
+				MaxSymbolsPerMessage: maxSymbolsPerMessage,
+				MaxMessages:          maxMessages,
+				Timeout:              timeout,
 			}
 		}
 		group.Help = groupHelp.String()
@@ -140,8 +153,7 @@ type Config struct {
 }
 
 type Settings struct {
-	Token      string
-	MaxSymbols int
+	Token string
 }
 
 type Group struct {
@@ -167,11 +179,13 @@ type Auth struct {
 }
 
 type Command struct {
-	Id        string
-	Help      string
-	Format    string
-	Arguments []*Argument
-	Timeout   time.Duration
+	Id                   string
+	Help                 string
+	Format               string
+	Arguments            []*Argument
+	Timeout              time.Duration
+	MaxSymbolsPerMessage int
+	MaxMessages          int
 }
 
 type Argument struct {
@@ -193,10 +207,11 @@ type config struct {
 }
 
 type settings struct {
-	Token       string `toml:"token"`
-	Description string `toml:"description"`
-	MaxSymbols  int    `toml:"maxSymbols"`
-	Timeout     string `toml:"timeout"`
+	Token                string `toml:"token"`
+	Description          string `toml:"description"`
+	MaxSymbolsPerMessage int    `toml:"MaxSymbolsPerMessage"`
+	MaxMessages          int    `toml:"MaxMessages"`
+	Timeout              string `toml:"timeout"`
 }
 
 type group struct {
@@ -208,11 +223,13 @@ type group struct {
 }
 
 type command struct {
-	Id          string   `toml:"id"`
-	Description string   `toml:"description"`
-	Format      string   `toml:"cmdFmt"`
-	Arguments   []string `toml:"arguments"`
-	Timeout     string   `toml:"timeout"`
+	Id                   string   `toml:"id"`
+	Description          string   `toml:"description"`
+	Format               string   `toml:"cmdFmt"`
+	Arguments            []string `toml:"arguments"`
+	MaxSymbolsPerMessage int      `toml:"maxSymbolsPerMessage"`
+	MaxMessages          int      `toml:"maxMessages"`
+	Timeout              string   `toml:"timeout"`
 }
 
 type host struct {
