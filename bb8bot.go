@@ -47,25 +47,45 @@ func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 		switch ev := msg.Data.(type) {
 
 		case *slack.MessageEvent:
-			fmt.Printf("Message: %v\n", ev)
+			log.Printf("Message: %+v", ev)
+
 			info := rtm.GetInfo()
 			prefix := "<@" + info.User.ID + ">"
 			text := ev.Msg.Text
 			action := strings.TrimPrefix(text, prefix)
 			if action != text {
-				action = strings.TrimSpace(action)
-				rawCmd, command, host, err := parseAction(action, conf)
-				if err != nil {
-					rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("%v", err), ev.Msg.Channel))
-				} else {
-					msgs, err := execute(conf, rawCmd, command, host)
-					if err != nil {
-						rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("error execution action: %v", err), ev.Msg.Channel))
-					}
-					for _, msg := range msgs {
-						rtm.SendMessage(rtm.NewOutgoingMessage(msg, ev.Msg.Channel))
-					}
 
+				user := ev.User
+				channel := ev.Channel
+				log.Printf("User : %q Channel: %q", user, channel)
+
+				users := conf.Settings.Users
+				channels := conf.Settings.Channels
+
+				_, isAdmin := conf.Settings.Admins[user]
+				if _, isUserPermitted := users[user]; len(users) > 0 && !isUserPermitted && !isAdmin {
+					log.Printf("User %q doesn't have enough permissions", user)
+					rtm.SendMessage(rtm.NewOutgoingMessage("You don't have enough permissions", channel))
+				} else {
+					if _, isChannelPermitted := channels[channel]; len(channels) > 0 && !isChannelPermitted && !isAdmin {
+						log.Printf("Channel %q doesn't have enough permissions", channel)
+						rtm.SendMessage(rtm.NewOutgoingMessage("This channel doesn't have enough permissions", channel))
+					} else {
+
+						action = strings.TrimSpace(action)
+						rawCmd, command, host, err := parseAction(action, conf)
+						if err != nil {
+							rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("%v", err), channel))
+						} else {
+							msgs, err := execute(rawCmd, command, host)
+							if err != nil {
+								rtm.SendMessage(rtm.NewOutgoingMessage(fmt.Sprintf("error execution action: %v", err), channel))
+							}
+							for _, msg := range msgs {
+								rtm.SendMessage(rtm.NewOutgoingMessage(msg, channel))
+							}
+						}
+					}
 				}
 			}
 		default:
@@ -166,7 +186,7 @@ func parseAction(action string, conf *config.Config) (rawCmd *string, command *c
 }
 
 // execute ssh command on specified host
-func execute(conf *config.Config, rawCmd *string, command *config.Command, host *config.Host) ([]string, error) {
+func execute(rawCmd *string, command *config.Command, host *config.Host) ([]string, error) {
 	addr := fmt.Sprintf("%s:%d", host.Address, host.Port)
 	log.Printf("Execute cmd: %q on host: %q", *rawCmd, addr)
 

@@ -217,9 +217,16 @@ func TestParse(t *testing.T) {
 		Commands: group2Commands,
 	}
 
+	channels := make(map[string]struct{})
+	users := make(map[string]struct{})
+	admins := make(map[string]struct{})
+
 	expected := &Config{
 		Settings: &Settings{
-			Token: "xoxb-36484",
+			Token:    "xoxb-36484",
+			Channels: channels,
+			Users:    users,
+			Admins:   admins,
 		},
 		Hosts:  hosts,
 		Groups: groups,

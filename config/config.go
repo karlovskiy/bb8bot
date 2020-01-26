@@ -42,6 +42,21 @@ func Parse(configData string) (*Config, error) {
 		Token: internal.Settings.Token,
 	}
 
+	external.Settings.Channels = make(map[string]struct{})
+	for _, channel := range internal.Settings.Channels {
+		external.Settings.Channels[channel] = struct{}{}
+	}
+
+	external.Settings.Users = make(map[string]struct{})
+	for _, user := range internal.Settings.Users {
+		external.Settings.Users[user] = struct{}{}
+	}
+
+	external.Settings.Admins = make(map[string]struct{})
+	for _, admin := range internal.Settings.Admins {
+		external.Settings.Admins[admin] = struct{}{}
+	}
+
 	external.Hosts = make(map[string]*Host)
 	for _, h := range internal.Hosts {
 		auth := h.Auth
@@ -153,7 +168,10 @@ type Config struct {
 }
 
 type Settings struct {
-	Token string
+	Token    string
+	Channels map[string]struct{}
+	Users    map[string]struct{}
+	Admins   map[string]struct{}
 }
 
 type Group struct {
@@ -207,11 +225,14 @@ type config struct {
 }
 
 type settings struct {
-	Token                string `toml:"token"`
-	Description          string `toml:"description"`
-	MaxSymbolsPerMessage int    `toml:"MaxSymbolsPerMessage"`
-	MaxMessages          int    `toml:"MaxMessages"`
-	Timeout              string `toml:"timeout"`
+	Token                string   `toml:"token"`
+	Description          string   `toml:"description"`
+	MaxSymbolsPerMessage int      `toml:"maxSymbolsPerMessage"`
+	MaxMessages          int      `toml:"maxMessages"`
+	Timeout              string   `toml:"timeout"`
+	Channels             []string `toml:"channels"`
+	Users                []string `toml:"users"`
+	Admins               []string `toml:"admins"`
 }
 
 type group struct {
