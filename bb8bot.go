@@ -40,7 +40,7 @@ func main() {
 
 }
 
-// handle all incoming RTM events
+// handleIncomingEvents handles all incoming RTM events
 func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 	for msg := range rtm.IncomingEvents {
 
@@ -94,7 +94,7 @@ func handleIncomingEvents(rtm *slack.RTM, conf *config.Config) {
 	}
 }
 
-// parse action from chat message and convert it to ssh command for execution
+// parseAction parses action from chat message and convert it to ssh command for execution
 func parseAction(action string, conf *config.Config) (rawCmd *string, command *config.Command, host *config.Host, err error) {
 	log.Printf("Parse action: %q", action)
 
@@ -185,7 +185,7 @@ func parseAction(action string, conf *config.Config) (rawCmd *string, command *c
 	return &rawCommand, command, host, nil
 }
 
-// execute ssh command on specified host
+// execute executes ssh command on specified host
 func execute(rawCmd *string, command *config.Command, host *config.Host) ([]string, error) {
 	addr := fmt.Sprintf("%s:%d", host.Address, host.Port)
 	log.Printf("Execute cmd: %q on host: %q", *rawCmd, addr)
@@ -236,6 +236,7 @@ func execute(rawCmd *string, command *config.Command, host *config.Host) ([]stri
 	return createMessages(string(data), command.MaxSymbolsPerMessage, command.MaxMessages), nil
 }
 
+// createMessages creates messages to send after execution
 func createMessages(output string, maxSymbolsPerMessage int, maxMessages int) (msgs []string) {
 	var b strings.Builder
 	size := utf8.RuneCountInString(output)

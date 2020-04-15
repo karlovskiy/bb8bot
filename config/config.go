@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// ParseFile reads the file named by filename and returns the parsed config.
+// A successful call returns err == nil.
 func ParseFile(configPath string) (*Config, error) {
 	c, err := ioutil.ReadFile(configPath)
 	if err != nil {
@@ -16,6 +18,8 @@ func ParseFile(configPath string) (*Config, error) {
 	return Parse(string(c))
 }
 
+// Parse reads the config text and returns the parsed config.
+// A successful call returns err == nil.
 func Parse(configData string) (*Config, error) {
 	var internal config
 	if _, err := toml.Decode(configData, &internal); err != nil {
@@ -159,7 +163,7 @@ func Parse(configData string) (*Config, error) {
 	return &external, nil
 }
 
-// external config
+// Config is the main config type
 type Config struct {
 	Settings *Settings
 	Hosts    map[string]*Host
@@ -167,6 +171,7 @@ type Config struct {
 	Help     string
 }
 
+// Settings is the config's part with slack token, users, channels and etc.
 type Settings struct {
 	Token    string
 	Channels map[string]struct{}
@@ -174,6 +179,7 @@ type Settings struct {
 	Admins   map[string]struct{}
 }
 
+// Group is the group with commands
 type Group struct {
 	Id       string
 	Help     string
@@ -181,6 +187,7 @@ type Group struct {
 	Commands map[string]*Command
 }
 
+// Host is the host address, port, authentication and etc.
 type Host struct {
 	Id      string
 	Address string
@@ -188,6 +195,7 @@ type Host struct {
 	Auth    *Auth
 }
 
+// Auth is the authentication information
 type Auth struct {
 	Type           string
 	Username       string
@@ -196,6 +204,7 @@ type Auth struct {
 	Passphrase     string
 }
 
+// Command is the command attributes and arguments
 type Command struct {
 	Id                   string
 	Help                 string
@@ -206,18 +215,19 @@ type Command struct {
 	MaxMessages          int
 }
 
+// Argument is the command argument
 type Argument struct {
 	Id    string
 	Help  string
 	Items []*Item
 }
 
+// Item is the argument item information
 type Item struct {
 	Name  string
 	Value string
 }
 
-// internal config
 type config struct {
 	Settings settings `toml:"settings"`
 	Hosts    []host   `toml:"host"`
