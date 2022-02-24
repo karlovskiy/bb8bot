@@ -201,7 +201,7 @@ func execute(rawCmd *string, command *config.Command, host *config.Host) ([]stri
 		sshConf.Auth = []ssh.AuthMethod{
 			ssh.Password(auth.Password),
 		}
-	} else if auth.Type == "" {
+	} else if auth.Type == "publickey" {
 		key, err := ioutil.ReadFile(auth.PrivateKeyPath)
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("error loading private key %q: %v", auth.PrivateKeyPath, err))
@@ -230,7 +230,7 @@ func execute(rawCmd *string, command *config.Command, host *config.Host) ([]stri
 
 	data, err := session.CombinedOutput(*rawCmd)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error calling ssh command: %v", err))
+		return nil, errors.New(fmt.Sprintf("error calling ssh command: %v, out: %s", err, data))
 	}
 
 	return createMessages(string(data), command.MaxSymbolsPerMessage, command.MaxMessages), nil
