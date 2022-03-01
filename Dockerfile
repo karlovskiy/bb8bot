@@ -1,4 +1,4 @@
-FROM golang:1.13-alpine3.10 as builder
+FROM golang:1.17-alpine3.15 as builder
 
 RUN set -eux && \
 	apk add --no-cache \
@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -v -tags 'osusergo,netgo,static,static_
 
 
 
-FROM alpine:3.10
+FROM alpine:3.15
 
 RUN set -eux && \
 	apk add --no-cache \

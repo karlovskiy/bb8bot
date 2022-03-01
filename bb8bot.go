@@ -161,7 +161,7 @@ func parseAction(action string, conf *config.Config) (rawCmd *string, command *c
 					return nil, nil, nil, errors.New(
 						fmt.Sprintf("*%d* argument not found\n%s", i+1, command.Help))
 				}
-				argValue := actionParts[argIndex]
+				argValue := strings.Trim(actionParts[argIndex], conf.Settings.ArgumentsTrimCutSet)
 				found := false
 				for _, item := range arg.Items {
 					if argValue == item.Name {

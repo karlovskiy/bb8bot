@@ -43,7 +43,8 @@ func Parse(configData string) (*Config, error) {
 
 	var external Config
 	external.Settings = &Settings{
-		Token: internal.Settings.Token,
+		Token:               internal.Settings.Token,
+		ArgumentsTrimCutSet: internal.Settings.ArgumentsTrimCutSet,
 	}
 
 	external.Settings.Channels = make(map[string]struct{})
@@ -173,10 +174,11 @@ type Config struct {
 
 // Settings is the config's part with slack token, users, channels and etc.
 type Settings struct {
-	Token    string
-	Channels map[string]struct{}
-	Users    map[string]struct{}
-	Admins   map[string]struct{}
+	Token               string
+	Channels            map[string]struct{}
+	Users               map[string]struct{}
+	Admins              map[string]struct{}
+	ArgumentsTrimCutSet string
 }
 
 // Group is the group with commands
@@ -243,6 +245,7 @@ type settings struct {
 	Channels             []string `toml:"channels"`
 	Users                []string `toml:"users"`
 	Admins               []string `toml:"admins"`
+	ArgumentsTrimCutSet  string   `toml:"argumentsTrimCutSet"`
 }
 
 type group struct {

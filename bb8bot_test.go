@@ -128,6 +128,12 @@ func TestParseAction(t *testing.T) {
 			"onehost",
 			nil,
 		},
+		{
+			"group1 command2 `arg-name`",
+			"raw command2 arg-value",
+			"onehost",
+			nil,
+		},
 	}
 
 	conf := makeTestConfig()
@@ -209,7 +215,8 @@ func makeTestConfig() *config.Config {
 
 	conf := &config.Config{
 		Settings: &config.Settings{
-			Token: "xoxb-36484",
+			Token:               "xoxb-36484",
+			ArgumentsTrimCutSet: "`",
 		},
 		Hosts:  hosts,
 		Groups: groups,
