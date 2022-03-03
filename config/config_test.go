@@ -143,7 +143,7 @@ func TestParse(t *testing.T) {
 	var arguments []*Argument
 	arguments = append(arguments, &Argument{
 		Id:    "argument",
-		Help:  "`argument`   _Argument for command:_ `name`",
+		Help:  "_Command argument:_ `argument`\n_Argument for command:_\n1. `name`\n",
 		Items: items,
 	})
 
@@ -177,7 +177,7 @@ func TestParse(t *testing.T) {
 	}
 	group1Commands["with-args-cmd"] = &Command{
 		Id:                   "with-args-cmd",
-		Help:                 "_With args cmd_\n_*Format:*_\n```group1 [host] with-args-cmd <argument>```\n`argument`   _Argument for command:_ `name`",
+		Help:                 "_With args cmd_\n_*Format:*_\n```group1 [host] with-args-cmd <argument>```\n_Command argument:_ `argument`\n_Argument for command:_\n1. `name`\n",
 		Format:               "cmd-with-args %s",
 		Arguments:            arguments,
 		Timeout:              defaultTimeout,

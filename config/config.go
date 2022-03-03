@@ -100,13 +100,13 @@ func Parse(configData string) (*Config, error) {
 		for _, a := range g.Arguments {
 			items := make([]*Item, len(a.Items))
 			var itemsHelp strings.Builder
-			itemsHelp.WriteString(fmt.Sprintf("`%s`   _%s:_", a.Id, a.Description))
+			itemsHelp.WriteString(fmt.Sprintf("_Command argument:_ `%s`\n_%s:_\n", a.Id, a.Description))
 			for i, item := range a.Items {
 				items[i] = &Item{
 					Name:  item.Name,
 					Value: item.Value,
 				}
-				itemsHelp.WriteString(fmt.Sprintf(" `%s`", item.Name))
+				itemsHelp.WriteString(fmt.Sprintf("%d. `%s`\n", i+1, item.Name))
 			}
 			groupArgs[a.Id] = &Argument{
 				Id:    a.Id,
